@@ -25,34 +25,6 @@ struct Article {
     text: String
 }
 
-fn url_decode(input: &str) -> Result<String, String> {
-    let mut bytes = Vec::new();
-    let mut chars = input.chars();
-    while let Some(c) = chars.next() {
-        if c == '%' {
-            // Декодируем %-последовательность
-            let hex1 = chars.next().and_then(|c| c.to_digit(16));
-            let hex2 = chars.next().and_then(|c| c.to_digit(16));
-            if let (Some(h1), Some(h2)) = (hex1, hex2) {
-                let decoded_byte = (h1 << 4 | h2) as u8;
-                bytes.push(decoded_byte);
-            } else {
-                return Err("Invalid %-sequence".to_string());
-            }
-        } else if c == '+' {
-            // Заменяем '+' на пробел
-            bytes.push(b' ');
-        } else {
-            // Обычный символ (добавляем как байт)
-            let mut buf = [0; 4];
-            let encoded = c.encode_utf8(&mut buf);
-            bytes.extend_from_slice(encoded.as_bytes());
-        }
-    }
-    // Преобразуем байты в строку
-    String::from_utf8(bytes).map_err(|e| e.to_string())
-}
-
 #[async_std::main]
 async fn main() {
     let mut router = Router::new();
@@ -96,13 +68,15 @@ async fn main() {
     router.add_route("POST", "/article/create", |req, res| {
         let form_data = req.get_body();
 
-        let title = form_data.get("title")
-            .and_then(|v| url_decode(v).ok())
-            .unwrap_or_default();
+        let title = match form_data.get("title") {
+            Some(value) => value.to_string(),
+            None => String::new(),
+        };
 
-        let text = form_data.get("text")
-            .and_then(|v| url_decode(v).ok())
-            .unwrap_or_default();
+        let text = match form_data.get("text") {
+            Some(value) => value.to_string(),
+            None => String::new(),
+        };
 
         println!("Title: {}", title);
         println!("Text: {}", text);
