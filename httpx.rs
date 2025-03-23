@@ -21,10 +21,8 @@ impl Router {
     pub fn add_route(&mut self, method: &str, path: &str, handler: RouteHandler) {
         let key = format!("{} {}", method, path);
         if path.contains(':') {
-            // Динамический маршрут
             self.dynamic_routes.insert(key, handler);
         } else {
-            // Статический маршрут
             self.static_routes.insert(key, handler);
         }
     }
@@ -60,7 +58,6 @@ impl Router {
                 handler(request, &mut response);
                 response.send(&mut stream).await;
             } else {
-                //println!("Returning 404 for {} {}", request.method, request.path); // Отладочное сообщение
                 self.not_found(&mut stream).await;
             }
         } else {
@@ -69,40 +66,29 @@ impl Router {
     }
 
     fn find_route(&self, request: &mut HttpRequest) -> Option<&RouteHandler> {
-        // Сначала проверяем статические маршруты
         let static_key = format!("{} {}", request.method, request.path);
-        //println!("Checking static route: {}", static_key); // Отладочное сообщение
         if let Some(handler) = self.static_routes.get(&static_key) {
-            //println!("Static route found: {}", static_key); // Отладочное сообщение
             return Some(handler);
         }
 
-        // Проверяем, есть ли статический маршрут для этого пути (даже если метод другой)
         for (key, _) in &self.static_routes {
             let parts: Vec<&str> = key.split_whitespace().collect();
             if parts.len() == 2 && parts[1] == request.path {
-                //println!("Static path exists, but method mismatch: {}", request.path); // Отладочное сообщение
-                return None; // Возвращаем None, чтобы вызвать 404
+                return None;
             }
         }
 
-        // Затем проверяем динамические маршруты
-        //println!("Checking dynamic routes..."); // Отладочное сообщение
         for (route, handler) in &self.dynamic_routes {
             if self.match_route(route, request) {
-                //println!("Dynamic route matched: {}", route); // Отладочное сообщение
                 return Some(handler);
             }
         }
 
-        // Если ничего не найдено
-        //println!("No route found for {} {}", request.method, request.path); // Отладочное сообщение
         None
     }
 
     fn is_static_path(&self, route_path: &str, request_path: &str) -> bool {
-        // Проверяем, есть ли статический маршрут, который соответствует пути
-        let static_key = format!("GET {}", request_path); // Предполагаем GET для примера
+        let static_key = format!("GET {}", request_path);
         self.static_routes.contains_key(&static_key)
     }
 
@@ -111,7 +97,7 @@ impl Router {
         if route_parts[0] == request.method
             && self.is_path_match(route_parts[1], &request.path, &mut request.params)
         {
-            println!("Route matched: {}", route); // Отладочное сообщение
+            println!("Route matched: {}", route);
             return true;
         }
         false
@@ -122,24 +108,24 @@ impl Router {
         let request_segments: Vec<&str> = request_path.split('/').collect();
 
         if route_segments.len() != request_segments.len() {
-            println!("Path length mismatch: {} != {}", route_path, request_path); // Отладочное сообщение
+            println!("Path length mismatch: {} != {}", route_path, request_path);
             return false;
         }
 
         for (route_seg, req_seg) in route_segments.iter().zip(request_segments.iter()) {
             if route_seg.starts_with(':') {
                 if req_seg.is_empty() {
-                    println!("Empty segment for dynamic route: {}", route_path); // Отладочное сообщение
+                    println!("Empty segment for dynamic route: {}", route_path);
                     return false;
                 }
                 let param_name = &route_seg[1..];
                 params.insert(param_name.to_string(), req_seg.to_string());
             } else if route_seg != req_seg {
-                println!("Segment mismatch: {} != {}", route_seg, req_seg); // Отладочное сообщение
+                println!("Segment mismatch: {} != {}", route_seg, req_seg);
                 return false;
             }
         }
-        println!("Path matched: {} == {}", route_path, request_path); // Отладочное сообщение
+        println!("Path matched: {} == {}", route_path, request_path);
         true
     }
 
@@ -221,16 +207,12 @@ impl HttpRequest {
         })
     }
 
-    // pub fn get_body(&self) -> &str {
-    //     &self.body
-    // }
-
     pub fn get_body_raw(&self) -> String {
         return self.read_until_null(&self.body)
     }
 
     fn read_until_null(&self, data: &String) -> String {
-        let bytes = data.as_bytes(); // Преобразуем строку в байтовый срез
+        let bytes = data.as_bytes();
         let null_terminated_data = bytes.split(|&x| x == 0).next().unwrap_or(&[]);
         String::from_utf8_lossy(null_terminated_data).into_owned()
     }
@@ -257,13 +239,10 @@ impl HttpRequest {
     }
 
     pub fn get_param(&self, name: &str) -> &str {
-        // Проверяем параметры пути
         if let Some(value) = self.params.get(name) {
-            // Если параметр содержит "&", берём только часть до "&"
             return value.split('&').next().unwrap_or("");
         }
 
-        // Проверяем параметры строки запроса
         if let Some(query) = self.query_params.get(name) {
             return query;
         }
