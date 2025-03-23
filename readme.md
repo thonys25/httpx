@@ -1,6 +1,6 @@
 # httpx - The simplest web router for Rust.
 
-## The main idea is to make a simple and intuitive router for the Rust language, which will be as simple as in Laravel or Go.
+The main idea is to make a simple and intuitive router for the Rust language, which will be as simple as in Laravel or Go.
 
 ### Example of a simple application
 ```
